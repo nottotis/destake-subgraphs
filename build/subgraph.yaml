@@ -1,6 +1,6 @@
 specVersion: 0.0.2
 schema:
-  file: ./schema.graphql
+  file: schema.graphql
 dataSources:
   - kind: ethereum
     name: Destake
@@ -20,7 +20,7 @@ dataSources:
         - Transfer
       abis:
         - name: Destake
-          file: ./abis/Destake.json
+          file: Destake/abis/Destake.json
       eventHandlers:
         - event: GRTDeposited(address,uint256)
           handler: handleGRTDeposited
@@ -28,7 +28,7 @@ dataSources:
           handler: handleDelegationAddressAdded
         - event: DelegationAddressRemoved(address)
           handler: handleDelegationAddressRemoved
-      file: ./src/mapping.ts
+      file: Destake/Destake.wasm
   - kind: ethereum
     name: ERC20
     network: rinkeby
@@ -47,11 +47,11 @@ dataSources:
         - Transfer
       abis:
         - name: ERC20
-          file: ./abis/ERC20.json
+          file: ERC20/abis/ERC20.json
       eventHandlers:
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
-      file: ./src/mapping.ts
+      file: Destake/Destake.wasm
   - kind: ethereum
     name: GraphStaking
     network: rinkeby
@@ -70,27 +70,9 @@ dataSources:
         - Transfer
       abis:
         - name: GraphStaking
-          file: ./abis/GraphStaking.json
+          file: GraphStaking/abis/GraphStaking.json
       eventHandlers:
-        - event: AllocationClosed(indexed address,indexed bytes32,uint256,uint256,indexed address,uint256,address,bytes32,bool)
+        - event: AllocationClosed(indexed address,indexed bytes32,uint256,uint256,indexed
+            address,uint256,address,bytes32,bool)
           handler: handleAllocationClosed
-  # - AllocationClosed(indexed address,indexed bytes32,uint256,uint256,indexed address,uint256,address,bytes32,bool)
-  # - AllocationCollected(indexed address,indexed bytes32,uint256,uint256,indexed address,address,uint256,uint256)
-  # - AllocationCreated(indexed address,indexed bytes32,uint256,uint256,indexed address,bytes32)
-  # - AssetHolderUpdate(indexed address,indexed address,bool)
-  # - ContractSynced(indexed bytes32,address)
-  # - DelegationParametersUpdated(indexed address,uint32,uint32,uint32)
-  # - ParameterUpdated(string)
-  # - RebateClaimed(indexed address,indexed bytes32,indexed address,uint256,uint256,uint256,uint256,uint256)
-  # - SetController(address)
-  # - SetOperator(indexed address,indexed address,bool)
-  # - SetRewardsDestination(indexed address,indexed address)
-  # - SlasherUpdate(indexed address,indexed address,bool)
-  # - StakeDelegated(indexed address,indexed address,uint256,uint256)
-  # - StakeDelegatedLocked(indexed address,indexed address,uint256,uint256,uint256)
-  # - StakeDelegatedWithdrawn(indexed address,indexed address,uint256)
-  # - StakeDeposited(indexed address,uint256)
-  # - StakeLocked(indexed address,uint256,uint256)
-  # - StakeSlashed(indexed address,uint256,uint256,address)
-  # - StakeWithdrawn(indexed address,uint256)
-      file: ./src/mapping.ts
+      file: Destake/Destake.wasm

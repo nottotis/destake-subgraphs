@@ -1,75 +1,180 @@
-import { BigInt } from "@graphprotocol/graph-ts"
+import { BigInt, Bytes, Address } from "@graphprotocol/graph-ts"
 import {
-  Contract,
-  Approval,
-  ApprovalForAll,
-  OwnershipTransferred,
+  Destake,
+  GRTDeposited,
+  DelegationAddressAdded,
+  DelegationAddressRemoved
+} from "../generated/Destake/Destake"
+import {
+  ERC20,
   Transfer
-} from "../generated/Contract/Contract"
-import { ExampleEntity } from "../generated/schema"
+} from "../generated/ERC20/ERC20"
+import {
+  AllocationClosed, GraphStaking
+} from "../generated/GraphStaking/GraphStaking"
+import { 
+  User,
+  Balance,
+  BlockBalance,
+  TokenStatus,
+  DelegationAddress,
+  StakingBalance
+ } from "../generated/schema"
 
-export function handleApproval(event: Approval): void {
-  // Entities can be loaded from the store using a string ID; this ID
-  // needs to be unique across all entities of the same type
-  let entity = ExampleEntity.load(event.transaction.from.toHex())
+ import {
+   ZeroAddress,
+   GraphStakingAddress,
+   DestakeAddress
+  } from "./constants"
 
-  // Entities only exist after they have been saved to the store;
-  // `null` checks allow to create entities on demand
-  if (!entity) {
-    entity = new ExampleEntity(event.transaction.from.toHex())
+export function handleGRTDeposited(event: GRTDeposited): void {
+  let entity = User.load(event.transaction.from.toHex());
 
-    // Entity fields can be set using simple assignments
-    entity.count = BigInt.fromI32(0)
+  if(!entity){
+    entity = new User(event.transaction.from.toHex());
+    entity.deposited = BigInt.fromI32(0);
   }
 
-  // BigInt and BigDecimal math are supported
-  entity.count = entity.count + BigInt.fromI32(1)
-
-  // Entity fields can be set based on event parameters
-  entity.owner = event.params.owner
-  entity.approved = event.params.approved
-
-  // Entities can be written to the store with `.save()`
-  entity.save()
-
-  // Note: If a handler doesn't require existing field values, it is faster
-  // _not_ to load the entity from the store. Instead, create it fresh with
-  // `new Entity(...)`, set the fields that should be updated and save the
-  // entity back to the store. Fields that were not set or unset remain
-  // unchanged, allowing for partial updates to be applied.
-
-  // It is also possible to access smart contracts from mappings. For
-  // example, the contract that has emitted the event can be connected to
-  // with:
-  //
-  // let contract = Contract.bind(event.address)
-  //
-  // The following functions can then be called on this contract to access
-  // state variables and other data:
-  //
-  // - contract.ADDRESS_1(...)
-  // - contract.ADDRESS_2(...)
-  // - contract.MAX_SUPPLY(...)
-  // - contract.MINT_LIMIT(...)
-  // - contract.PUBLIC_PRICE(...)
-  // - contract.balanceOf(...)
-  // - contract.freeMints(...)
-  // - contract.getApproved(...)
-  // - contract.isApprovedForAll(...)
-  // - contract.isPublicSaleActive(...)
-  // - contract.name(...)
-  // - contract.numberMinted(...)
-  // - contract.owner(...)
-  // - contract.ownerOf(...)
-  // - contract.supportsInterface(...)
-  // - contract.symbol(...)
-  // - contract.tokenURI(...)
-  // - contract.totalSupply(...)
-  // - contract.usedDigests(...)
+  
+  entity.deposited = entity.deposited.plus(event.params.grtAmount);
+  entity.depositedBlock = event.block.number;
+  entity.save();
 }
 
-export function handleApprovalForAll(event: ApprovalForAll): void {}
+export function handleTransfer(event: Transfer): void {
+  let from = Balance.load(event.params.from.toHex());
+  let to = Balance.load(event.params.to.toHex());
+  let value = event.params.value;
+  let blockNumber = event.block.number;
 
-export function handleOwnershipTransferred(event: OwnershipTransferred): void {}
+  if(event.params.from.toHex() == event.params.to.toHex()){
+    return;
+  }
 
-export function handleTransfer(event: Transfer): void {}
+  if(!from){
+    from = new Balance(event.params.from.toHex());
+    // from.balance = BigInt.fromI32(0);
+  }
+  if(!to){
+    to = new Balance(event.params.to.toHex());
+    // to.balance = BigInt.fromI32(0);
+  }
+
+  let fromBlockBalance = new BlockBalance(`${event.params.from.toHex()}-${from.numOfTransfer.plus(BigInt.fromI32(1))}`);
+
+  if(from.numOfTransfer == BigInt.zero()){
+    fromBlockBalance.balance = fromBlockBalance.balance.minus(value);
+    fromBlockBalance.block = blockNumber;
+  }else{
+    let lastBalance = BlockBalance.load(`${event.params.from.toHex()}-${from.numOfTransfer}`)!;
+    fromBlockBalance.balance = lastBalance.balance.minus(value);
+    fromBlockBalance.block = blockNumber;
+  }
+  fromBlockBalance.save();
+  let newFromBalanceArray = from.balance;
+  newFromBalanceArray.push(fromBlockBalance.id);
+  from.balance = newFromBalanceArray;
+
+  let toBlockBalance = new BlockBalance(`${event.params.to.toHex()}-${to.numOfTransfer.plus(BigInt.fromI32(1))}`);
+  if(to.numOfTransfer == BigInt.zero()){
+    toBlockBalance.balance = toBlockBalance.balance.plus(value);
+    toBlockBalance.block = blockNumber;
+  }else{
+    let lastBalance = BlockBalance.load(`${event.params.to.toHex()}-${to.numOfTransfer}`)!;
+    toBlockBalance.balance = lastBalance.balance.plus(value);
+    toBlockBalance.block = blockNumber;
+  }
+  toBlockBalance.save();
+  let newToBalanceArray = to.balance;
+  newToBalanceArray.push(toBlockBalance.id);
+  to.balance = newToBalanceArray;
+
+  from.numOfTransfer = from.numOfTransfer.plus(BigInt.fromI32(1));
+  to.numOfTransfer = to.numOfTransfer.plus(BigInt.fromI32(1));
+  from.save();
+  to.save();
+
+  // save token supply
+  let zeroAddressBalanceEntity = Balance.load(ZeroAddress)!;
+  let numOfTransfer = zeroAddressBalanceEntity.numOfTransfer;
+  let zeroBalance = BlockBalance.load(`${ZeroAddress}-${numOfTransfer}`)!;
+  let tokenStatus = TokenStatus.load(blockNumber.toString());
+  if(!tokenStatus){
+    tokenStatus = new TokenStatus(blockNumber.toString());
+  }
+  tokenStatus.tokenSupply = zeroBalance.balance.times(BigInt.fromI32(-1));
+  tokenStatus.save();
+}
+
+export function handleAllocationClosed(event: AllocationClosed): void{
+    // indexer, 
+    // subgraphDeploymentID,
+    // epoch,
+    // tokens,
+    // allocationID,
+    // effectiveAllocation,
+    // sender,
+    // poi,
+    // isDelegator
+  const params = event.params;
+  let delegationAddress = DelegationAddress.load("destake");
+  if(!delegationAddress){//no addresses
+    return;
+  }
+
+  const delegationAddressArray = delegationAddress.addresses;
+
+  for(var i = 0;i<delegationAddressArray.length;i++){
+    if(delegationAddressArray[i] == params.indexer){
+      if((!params.isDelegator) && (params.poi != Bytes.fromI32(0))){//check if Staking._distributeRewards called
+        // should check the rewards
+        let stakingContract = GraphStaking.bind(Address.fromString(GraphStakingAddress));
+        const delegationPool = stakingContract.delegationPools(params.indexer);
+        const delegation = stakingContract.getDelegation(params.indexer,Address.fromString(DestakeAddress));
+
+        const shares = delegation.shares;
+        const poolTotalTokens = delegationPool.value4;
+        const poolTotalShares = delegationPool.value5;
+
+        const tokenBalance = poolTotalShares.div(shares.times(poolTotalTokens));
+
+
+        const updatedAtBlock = delegationPool.value3;
+
+        let stakingBalance = StakingBalance.load(params.indexer.toHexString());
+        if(!stakingBalance){
+          stakingBalance = new StakingBalance(params.indexer.toHexString());
+        }
+        let currentBalance = new BlockBalance(`${params.indexer.toHexString()}-${updatedAtBlock}`);
+        currentBalance.balance = tokenBalance;
+        currentBalance.block = updatedAtBlock;
+        currentBalance.save();
+        stakingBalance.balanceAtBlock.push(currentBalance.id);
+        stakingBalance.save();
+
+        return;
+      }
+    }
+  }
+}
+
+export function handleDelegationAddressAdded(event: DelegationAddressAdded): void{
+  let delegationAddresses = DelegationAddress.load("destake");
+  if(!delegationAddresses){
+    delegationAddresses = new DelegationAddress("destake");
+  }
+  let addresses = delegationAddresses.addresses;
+  addresses.push(event.params.toBeDelegated);
+  delegationAddresses.addresses = addresses;
+  delegationAddresses.save();
+}
+
+export function handleDelegationAddressRemoved(event: DelegationAddressRemoved): void{
+  let delegationAddress = DelegationAddress.load("destake");
+  if(!delegationAddress){
+    delegationAddress = new DelegationAddress("destake");
+  }
+  let idx = delegationAddress.addresses.indexOf(event.params.toBeRemoved);
+  delegationAddress.addresses = delegationAddress.addresses.splice(idx);
+  delegationAddress.save();
+}
