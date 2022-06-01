@@ -6,6 +6,10 @@ type User @entity{
   depositedBlock: BigInt!
 }
 
+# User balance at each transfers occurs
+# id -> user address in hex
+# balance -> array of balance and on which block number
+# numOftransfer -> balance.length
 type Balance @entity {
   id: ID!
   balance: [BlockBalance!]!
@@ -34,5 +38,7 @@ type DelegationAddress @entity {
 # destake staking contract balance
 type StakingBalance @entity {
   id: ID!
-  balanceAtBlock: [BlockBalance!]!
+  # balanceAtBlock: [BlockBalance!]!
+  poolTotalShares: [BlockBalance!]!
+  poolTotalTokens: [BlockBalance!]!
 }

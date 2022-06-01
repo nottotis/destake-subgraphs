@@ -263,7 +263,8 @@ export class StakingBalance extends Entity {
     super();
     this.set("id", Value.fromString(id));
 
-    this.set("balanceAtBlock", Value.fromStringArray(new Array(0)));
+    this.set("poolTotalShares", Value.fromStringArray(new Array(0)));
+    this.set("poolTotalTokens", Value.fromStringArray(new Array(0)));
   }
 
   save(): void {
@@ -291,12 +292,21 @@ export class StakingBalance extends Entity {
     this.set("id", Value.fromString(value));
   }
 
-  get balanceAtBlock(): Array<string> {
-    let value = this.get("balanceAtBlock");
+  get poolTotalShares(): Array<string> {
+    let value = this.get("poolTotalShares");
     return value!.toStringArray();
   }
 
-  set balanceAtBlock(value: Array<string>) {
-    this.set("balanceAtBlock", Value.fromStringArray(value));
+  set poolTotalShares(value: Array<string>) {
+    this.set("poolTotalShares", Value.fromStringArray(value));
+  }
+
+  get poolTotalTokens(): Array<string> {
+    let value = this.get("poolTotalTokens");
+    return value!.toStringArray();
+  }
+
+  set poolTotalTokens(value: Array<string>) {
+    this.set("poolTotalTokens", Value.fromStringArray(value));
   }
 }

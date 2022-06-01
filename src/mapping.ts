@@ -1,4 +1,4 @@
-import { BigInt, Bytes, Address } from "@graphprotocol/graph-ts"
+import { BigInt, Bytes, Address, log } from "@graphprotocol/graph-ts"
 import {
   Destake,
   GRTDeposited,
@@ -117,39 +117,67 @@ export function handleAllocationClosed(event: AllocationClosed): void{
     // poi,
     // isDelegator
   const params = event.params;
-  let delegationAddress = DelegationAddress.load("destake");
-  if(!delegationAddress){//no addresses
-    return;
-  }
 
-  const delegationAddressArray = delegationAddress.addresses;
+  // for prod
+  // let delegationAddress = DelegationAddress.load("destake");
+  // if(!delegationAddress){//no addresses
+  //   return;
+  // }
+  // const delegationAddressArray = delegationAddress.addresses;
+  // end for prod
+
+// for test
+  // let delegationAddress = {addresses:[Bytes.fromHexString("0x9b0B5b9e628a76A183cF7c3E2DC82F61aFBE3a39")]};
+  const delegationAddressArray = [Bytes.fromHexString("0x9b0B5b9e628a76A183cF7c3E2DC82F61aFBE3a39")];
+//end for test
+
 
   for(var i = 0;i<delegationAddressArray.length;i++){
     if(delegationAddressArray[i] == params.indexer){
-      if((!params.isDelegator) && (params.poi != Bytes.fromI32(0))){//check if Staking._distributeRewards called
+      if(
+        (!params.isDelegator) && 
+        (params.poi.toHexString() != "0x0000000000000000000000000000000000000000000000000000000000000000"))
+      {//check if Staking._distributeRewards called
         // should check the rewards
         let stakingContract = GraphStaking.bind(Address.fromString(GraphStakingAddress));
         const delegationPool = stakingContract.delegationPools(params.indexer);
-        const delegation = stakingContract.getDelegation(params.indexer,Address.fromString(DestakeAddress));
+        // const delegation = stakingContract.getDelegation(params.indexer,Address.fromString(DestakeAddress));
 
-        const shares = delegation.shares;
+        // const shares = delegation.shares;
         const poolTotalTokens = delegationPool.value4;
         const poolTotalShares = delegationPool.value5;
 
-        const tokenBalance = poolTotalShares.div(shares.times(poolTotalTokens));
+        // log.warning("shares{} poolTotalTokens{} poolTotalShares{}",[shares.toString(),poolTotalTokens.toString(),poolTotalShares.toString()])
+        // const tokenBalance = poolTotalShares.div(shares.times(poolTotalTokens));
 
 
-        const updatedAtBlock = delegationPool.value3;
+        const updatedAtBlock = event.block.number;
+        // const updatedAtBlock = delegationPool.value3;
 
         let stakingBalance = StakingBalance.load(params.indexer.toHexString());
         if(!stakingBalance){
           stakingBalance = new StakingBalance(params.indexer.toHexString());
         }
-        let currentBalance = new BlockBalance(`${params.indexer.toHexString()}-${updatedAtBlock}`);
-        currentBalance.balance = tokenBalance;
-        currentBalance.block = updatedAtBlock;
-        currentBalance.save();
-        stakingBalance.balanceAtBlock.push(currentBalance.id);
+        // let currentBalance = new BlockBalance(`${params.indexer.toHexString()}-${updatedAtBlock}`);
+        // currentBalance.balance = tokenBalance;
+        // currentBalance.block = updatedAtBlock;
+        // currentBalance.save();
+        let totalShares = new BlockBalance(`${params.indexer.toHexString()}-${updatedAtBlock}-totalShares`);
+        totalShares.balance = poolTotalShares;
+        totalShares.block = updatedAtBlock;
+        totalShares.save();
+        let totalTokens = new BlockBalance(`${params.indexer.toHexString()}-${updatedAtBlock}-totalTokens`);
+        totalTokens.balance = poolTotalTokens;
+        totalTokens.block = updatedAtBlock;
+        totalTokens.save();
+
+        let newTotalShares = stakingBalance.poolTotalShares;
+        newTotalShares.push(totalShares.id);
+        stakingBalance.poolTotalShares = newTotalShares;
+
+        let newTotalTokens = stakingBalance.poolTotalTokens;
+        newTotalTokens.push(totalTokens.id);
+        stakingBalance.poolTotalTokens = newTotalTokens;
         stakingBalance.save();
 
         return;

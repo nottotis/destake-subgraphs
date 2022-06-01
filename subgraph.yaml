@@ -6,10 +6,11 @@ dataSources:
     name: Destake
     network: rinkeby
     source:
-      address: "0x038DCAfa0EFBEeF7F06680Df855897cee9Cfbfe1"
+      address: "0xF11B790b16fe4a2dbf09baF6CAE90959a653BCa7"
       abi: Destake
-      startBlock: 10583298
-    mapping:
+      # startBlock: 10583298
+      startBlock: 10776111 #for test
+    mapping: 
       kind: ethereum/events
       apiVersion: 0.0.5
       language: wasm/assemblyscript
@@ -33,9 +34,10 @@ dataSources:
     name: ERC20
     network: rinkeby
     source:
-      address: "0x192f37380ce4c19da7c1E772b13B01C2dE4bdfb3"
+      address: "0xE1e641D0bAdFD3f71f7eacf39dE49c0D0eC7A00a" #sGRT address
+      # address: "0x192f37380ce4c19da7c1E772b13B01C2dE4bdfb3" #Mock GRT
       abi: ERC20
-      startBlock: 10583298
+      startBlock: 10776111
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.5
@@ -58,7 +60,7 @@ dataSources:
     source:
       address: "0x2d44C0e097F6cD0f514edAC633d82E01280B4A5c"
       abi: GraphStaking
-      startBlock: 10583298
+      startBlock: 10776111
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.5
